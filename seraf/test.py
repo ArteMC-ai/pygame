@@ -42,8 +42,24 @@ class Node:
         self.start_pos = None  # Начальная позиция
 
     def draw(self, screen):
-        color = WHITE if self.owner == 0 else (BLUE if self.owner == 1 else RED)
+        # Определяем основной цвет в зависимости от владельца
+        if self.owner == 0:
+            color = WHITE
+            border_color = (220, 220, 220)  # Светло-серый для нейтральных территорий
+        elif self.owner == 1:
+            color = BLUE
+            border_color = (100, 100, 255)  # Бледно-синий для союзных территорий
+        else:  # Вражеская территория
+            color = RED
+            border_color = (255, 150, 150)  # Бледно-красный для вражеских территорий
+
+        # Рисуем обводку (бледный цвет)
+        pygame.draw.circle(screen, border_color, (self.x, self.y), self.radius + 10)  # Обводка
+
+        # Рисуем саму базу
         pygame.draw.circle(screen, color, (self.x, self.y), self.radius)
+
+        # Отображаем количество войск в центре базы
         font = pygame.font.SysFont(None, 24)
         text = font.render(str(self.troops), True, BLACK)
         screen.blit(text, (self.x - text.get_width() // 2, self.y - text.get_height() // 2))
@@ -196,14 +212,6 @@ def show_difficulty_selection():
 
     return difficulty_level
 
-
-# Функция для рисования линий между территориями (новая функция)
-def draw_lines(nodes):
-    for i in range(len(nodes)):
-        for j in range(i + 1, len(nodes)):
-            pygame.draw.line(screen, BLACK, (nodes[i].x, nodes[i].y), (nodes[j].x, nodes[j].y), 1)
-
-
 # Функция для проверки победы
 def check_victory(nodes):
     # Проверяем, что все территории принадлежат игроку (owner == 1)
@@ -284,7 +292,6 @@ def game_loop(difficulty_level):
                 node.draw(screen)
 
             # Рисуем линии между территориями
-            draw_lines(nodes)
 
         pygame.display.update()
         clock.tick(FPS)
