@@ -25,7 +25,6 @@ FPS = 60
 UNIT_GROWTH_INTERVAL = 1  # Время в секундах для набора войск
 MOVEMENT_SPEED = 5  # Скорость перемещения войск
 
-
 # Классы
 class Node:
     def __init__(self, x, y, owner, troops):
@@ -122,41 +121,45 @@ def check_collision(new_node, nodes):
             return True
     return False
 
-def create_nodes(num_nodes, difficulty_level):
+# Список уровней
+levels = [
+    {
+        "name": "Level 1",
+        "nodes": [
+            {"x": 200, "y": 200, "owner": 1, "troops": 20},
+            {"x": 600, "y": 200, "owner": 2, "troops": 20},
+            {"x": 400, "y": 400, "owner": 0, "troops": 40},
+        ]
+    },
+    {
+        "name": "Level 2",
+        "nodes": [
+            {"x": 150, "y": 150, "owner": 1, "troops": 40},
+            {"x": 650, "y": 150, "owner": 2, "troops": 30},
+            {"x": 400, "y": 300, "owner": 2, "troops": 25},
+            {"x": 300, "y": 500, "owner": 0, "troops": 40},
+            {"x": 500, "y": 500, "owner": 0, "troops": 30},
+        ]
+    },
+    {
+        "name": "Level 3",
+        "nodes": [
+            {"x": 100, "y": 100, "owner": 1, "troops": 30},
+            {"x": 700, "y": 100, "owner": 2, "troops": 30},
+            {"x": 400, "y": 300, "owner": 2, "troops": 45},
+            {"x": 250, "y": 450, "owner": 0, "troops": 50},
+            {"x": 550, "y": 450, "owner": 0, "troops": 45},
+            {"x": 400, "y": 550, "owner": 0, "troops": 35},
+        ]
+    }
+]
+
+# Функция для создания узлов для текущего уровня
+def create_nodes(level):
     nodes = []
-
-    # В зависимости от уровня сложности определяем количество территорий
-    if difficulty_level == 1:
-        num_enemy = 1
-        num_allied = 1
-        num_neutral = 1
-    elif difficulty_level == 2:
-        num_enemy = 2
-        num_allied = 2
-        num_neutral = 2
-    elif difficulty_level == 3:
-        num_enemy = 5
-        num_allied = 5
-        num_neutral = 5
-
-    while len(nodes) < num_enemy + num_allied + num_neutral:
-        x = random.randint(100, WIDTH - 100)
-        y = random.randint(100, HEIGHT - 100)
-        owner = 0
-        troops = random.randint(5, 20)
-
-        # Убираем лишнюю нейтральную территорию
-        if len(nodes) < num_allied:
-            owner = 1  # Союзная территория
-        elif len(nodes) < num_allied + num_enemy:
-            owner = 2  # Вражеская территория
-        else:
-            owner = 0  # Нейтральная территория
-
-        new_node = Node(x, y, owner, troops)
-
-        if not check_collision(new_node, nodes):
-            nodes.append(new_node)
+    for node_info in level["nodes"]:
+        new_node = Node(node_info["x"], node_info["y"], node_info["owner"], node_info["troops"])
+        nodes.append(new_node)
 
     # Добавляем соседей для каждой территории
     for node in nodes:
@@ -166,8 +169,7 @@ def create_nodes(num_nodes, difficulty_level):
 
     return nodes
 
-#ИИ
-"""Он смотри короче если на территории меньше чем у него то он кидает на неё своих моментально"""
+# ИИ
 def ai_turn(nodes):
     for node in nodes:
         if node.owner == 2:
@@ -189,6 +191,39 @@ def check_victory(nodes):
 def check_defeat(nodes):
     return all(node.owner == 2 for node in nodes)
 
+# Экран выбора уровня
+def level_selection_screen():
+    font = pygame.font.SysFont(None, 48)
+    title_text = font.render("Выберите уровень", True, BLACK)
+    title_rect = title_text.get_rect(center=(WIDTH // 2, 100))
+
+    level_buttons = []
+    for i, level in enumerate(levels):
+        button_text = font.render(level["name"], True, BLACK)
+        button_rect = pygame.Rect(WIDTH // 2 - 100, 200 + i * 80, 200, 50)
+        level_buttons.append((button_text, button_rect))
+
+    running = True
+    while running:
+        screen.fill(WHITE)
+        screen.blit(title_text, title_rect)
+
+        for i, (button_text, button_rect) in enumerate(level_buttons):
+            pygame.draw.rect(screen, (200, 200, 200), button_rect)
+            screen.blit(button_text, button_rect.move(50, 10))
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                pos = pygame.mouse.get_pos()
+                for i, (_, button_rect) in enumerate(level_buttons):
+                    if button_rect.collidepoint(pos):
+                        game_loop(i)  # Переход на выбранный уровень
+
+        pygame.display.update()
+        clock.tick(FPS)
+
 #вывод победы
 def show_victory_message():
     font = pygame.font.SysFont(None, 48)
@@ -204,11 +239,11 @@ def show_defeat_message():
     screen.blit(text, text_rect)
 
 # Главный игровой цикл
-def game_loop(difficulty_level):
-    nodes = create_nodes(10, difficulty_level)
+def game_loop(level_index):
+    level = levels[level_index]
+    nodes = create_nodes(level)
 
     selected_node = None
-
     running = True
     while running:
         screen.fill(GREEN)
@@ -244,7 +279,7 @@ def game_loop(difficulty_level):
                                             node.troops = abs(node.troops)
 
                                     elif node.owner == 1:
-                                        node.troops += troops_to_send #просто рождаем челиков
+                                        node.troops += troops_to_send  # Просто увеличиваем войска
 
                                     selected_node = None
 
@@ -256,7 +291,9 @@ def game_loop(difficulty_level):
             show_victory_message()
             pygame.display.update()
             pygame.time.wait(2000)
-            running = False  # Заканчиваем игру
+            if level_index + 1 < len(levels):
+                game_loop(level_index + 1)  # Переход к следующему уровню
+                return  # Завершаем текущий цикл
 
         # Проверка на поражение
         elif check_defeat(nodes):
@@ -275,9 +312,7 @@ def game_loop(difficulty_level):
         pygame.display.update()
         clock.tick(FPS)
 
-
 # Начало игры
-difficulty_level = 1  # Можно настроить на разные уровни сложности
-game_loop(difficulty_level)
+level_selection_screen()  # Экран выбора уровня
 
 pygame.quit()
