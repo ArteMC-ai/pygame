@@ -144,9 +144,9 @@ levels = [
     {
         "name": "Level 3",
         "nodes": [
-            {"x": 100, "y": 100, "owner": 1, "troops": 30},
+            {"x": 100, "y": 100, "owner": 1, "troops": 35},
             {"x": 700, "y": 100, "owner": 2, "troops": 30},
-            {"x": 400, "y": 300, "owner": 2, "troops": 45},
+            {"x": 400, "y": 300, "owner": 2, "troops": 20},
             {"x": 250, "y": 450, "owner": 0, "troops": 50},
             {"x": 550, "y": 450, "owner": 0, "troops": 45},
             {"x": 400, "y": 550, "owner": 0, "troops": 35},
