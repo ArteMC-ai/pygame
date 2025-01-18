@@ -1,10 +1,8 @@
 import math
 import random
 import time
-
 import pygame
 
-# Инициализация pygame
 pygame.init()
 
 # Настройки экрана
@@ -24,7 +22,7 @@ clock = pygame.time.Clock()
 FPS = 60
 
 # Время для роста войск
-UNIT_GROWTH_INTERVAL = 1  # Время в секундах для набора войск (уменьшено с 5 до 1)
+UNIT_GROWTH_INTERVAL = 1  # Время в секундах для набора войск
 MOVEMENT_SPEED = 5  # Скорость перемещения войск
 
 
@@ -40,6 +38,7 @@ class Node:
         self.moving = False  # Флаг для отслеживания перемещения
         self.target = None  # Целевая точка для перемещения
         self.start_pos = None  # Начальная позиция
+        self.neighbors = []  # Соседи для захвата
 
     def draw(self, screen):
         # Определяем основной цвет в зависимости от владельца
@@ -53,8 +52,8 @@ class Node:
             color = RED
             border_color = (255, 150, 150)  # Бледно-красный для вражеских территорий
 
-        # Рисуем обводку (бледный цвет)
-        pygame.draw.circle(screen, border_color, (self.x, self.y), self.radius + 10)  # Обводка
+        # Рисуем обводку (более бледный цвет)
+        pygame.draw.circle(screen, border_color, (self.x, self.y), self.radius + 5)  # Обводка
 
         # Рисуем саму базу
         pygame.draw.circle(screen, color, (self.x, self.y), self.radius)
@@ -93,7 +92,6 @@ class Node:
             dy = self.target.y - self.y
             distance = math.sqrt(dx ** 2 + dy ** 2)
 
-            # Если расстояние больше, чем скорость, двигаем в нужном направлении
             if distance > MOVEMENT_SPEED:
                 dx /= distance
                 dy /= distance
@@ -112,6 +110,9 @@ class Node:
                     else:
                         self.target.troops += self.troops
 
+    def add_neighbor(self, node):
+        if node not in self.neighbors:
+            self.neighbors.append(node)
 
 # Функция для проверки наложения кружочков
 def check_collision(new_node, nodes):
@@ -121,8 +122,6 @@ def check_collision(new_node, nodes):
             return True
     return False
 
-
-# Функция создания узлов с проверкой на наложение
 def create_nodes(num_nodes, difficulty_level):
     nodes = []
 
@@ -143,7 +142,7 @@ def create_nodes(num_nodes, difficulty_level):
     while len(nodes) < num_enemy + num_allied + num_neutral:
         x = random.randint(100, WIDTH - 100)
         y = random.randint(100, HEIGHT - 100)
-        owner = 0  # Начнем с нейтрального
+        owner = 0
         troops = random.randint(5, 20)
 
         # Убираем лишнюю нейтральную территорию
@@ -156,84 +155,62 @@ def create_nodes(num_nodes, difficulty_level):
 
         new_node = Node(x, y, owner, troops)
 
-        # Проверяем, что новый узел не перекрывает существующие
         if not check_collision(new_node, nodes):
             nodes.append(new_node)
 
+    # Добавляем соседей для каждой территории
+    for node in nodes:
+        for other_node in nodes:
+            if node != other_node:
+                node.add_neighbor(other_node)
+
     return nodes
 
-
-# Функция для отображения экрана выбора сложности
-def show_difficulty_selection():
-    font = pygame.font.SysFont(None, 48)
-    text = font.render("Select Difficulty", True, BLACK)
-    screen.blit(text, (WIDTH // 2 - text.get_width() // 2, HEIGHT // 3 - text.get_height() // 2))
-
-    button_font = pygame.font.SysFont(None, 36)
-    easy_button = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 - 30, 200, 60)
-    medium_button = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 40, 200, 60)
-    hard_button = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 110, 200, 60)
-
-    pygame.draw.rect(screen, (200, 200, 200), easy_button)
-    pygame.draw.rect(screen, (200, 200, 200), medium_button)
-    pygame.draw.rect(screen, (200, 200, 200), hard_button)
-
-    easy_text = button_font.render("Easy", True, BLACK)
-    medium_text = button_font.render("Medium", True, BLACK)
-    hard_text = button_font.render("Hard", True, BLACK)
-
-    screen.blit(easy_text,
-                (easy_button.centerx - easy_text.get_width() // 2, easy_button.centery - easy_text.get_height() // 2))
-    screen.blit(medium_text, (
-        medium_button.centerx - medium_text.get_width() // 2, medium_button.centery - medium_text.get_height() // 2))
-    screen.blit(hard_text,
-                (hard_button.centerx - hard_text.get_width() // 2, hard_button.centery - hard_text.get_height() // 2))
-
-    pygame.display.flip()
-
-    selecting = True
-    difficulty_level = 1  # По умолчанию выбран лёгкий уровень
-
-    while selecting:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                quit()
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                if easy_button.collidepoint(event.pos):
-                    difficulty_level = 1
-                    selecting = False
-                elif medium_button.collidepoint(event.pos):
-                    difficulty_level = 2
-                    selecting = False
-                elif hard_button.collidepoint(event.pos):
-                    difficulty_level = 3
-                    selecting = False
-
-    return difficulty_level
+#ИИ
+"""Он смотри короче если на территории меньше чем у него то он кидает на неё своих моментально"""
+def ai_turn(nodes):
+    for node in nodes:
+        if node.owner == 2:
+            for neighbor in node.neighbors:
+                if neighbor.owner != 2 and neighbor.troops < node.troops:
+                    if node.troops > neighbor.troops:
+                        troops_to_send = node.troops // 2
+                        node.troops -= troops_to_send
+                        neighbor.troops -= troops_to_send
+                        if neighbor.troops <= 0:
+                            neighbor.owner = 2
+                            neighbor.troops = abs(neighbor.troops)
 
 # Функция для проверки победы
 def check_victory(nodes):
-    # Проверяем, что все территории принадлежат игроку (owner == 1)
     return all(node.owner == 1 for node in nodes)
 
+# Функция для проверки поражения
+def check_defeat(nodes):
+    return all(node.owner == 2 for node in nodes)
 
+#вывод победы
 def show_victory_message():
     font = pygame.font.SysFont(None, 48)
-    text = font.render("Вы победили!", True, (255, 0, 0))  # Красный цвет
+    text = font.render("Вы победили!", True, (255, 0, 0))
     text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
     screen.blit(text, text_rect)
 
+#вывод поражения
+def show_defeat_message():
+    font = pygame.font.SysFont(None, 48)
+    text = font.render("Вы проиграли!", True, (255, 0, 0))  # Красный цвет
+    text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+    screen.blit(text, text_rect)
 
+# Главный игровой цикл
 def game_loop(difficulty_level):
-    # Создание узлов с учетом уровня сложности
     nodes = create_nodes(10, difficulty_level)
 
     selected_node = None
 
     running = True
     while running:
-        # Заливка фона зелёным цветом
         screen.fill(GREEN)
 
         for event in pygame.event.get():
@@ -252,37 +229,41 @@ def game_loop(difficulty_level):
                                     troops_to_send = selected_node.troops // 2
                                     selected_node.troops -= troops_to_send
 
-                                    if node.owner == 2:  # Вражеская территория
-                                        # Уменьшаем количество войск на вражеской территории
+                                    if node.owner == 2:
                                         node.troops -= troops_to_send
 
-                                        # Если вражеские войска стали меньше или равны нулю, захватываем территорию
                                         if node.troops <= 0:
-                                            node.owner = 1  # Переход в руки игрока
-                                            node.troops = abs(
-                                                node.troops)  # Устанавливаем положительное количество войск
+                                            node.owner = 1
+                                            node.troops = abs(node.troops)
 
-                                    elif node.owner == 0:  # Нейтральная территория
+                                    elif node.owner == 0:
                                         node.troops -= troops_to_send
 
-                                        # Если вражеские войска стали меньше или равны нулю, захватываем территорию
                                         if node.troops <= 0:
-                                            node.owner = 1  # Переход в руки игрока
-                                            node.troops = abs(
-                                                node.troops)  # Устанавливаем положительное количество войск
+                                            node.owner = 1
+                                            node.troops = abs(node.troops)
 
-                                    elif node.owner == 1:  # Союзная территория
-                                        node.troops += troops_to_send  # Просто добавляем войска
+                                    elif node.owner == 1:
+                                        node.troops += troops_to_send #просто рождаем челиков
 
                                     selected_node = None
 
+        ai_turn(nodes)
+
         # Проверка на победу
         if check_victory(nodes):
-            # Очищаем экран перед выводом сообщения о победе
-            screen.fill(GREEN)  # Зеленый фон
-            show_victory_message()  # Отображаем сообщение
+            screen.fill(GREEN)
+            show_victory_message()
             pygame.display.update()
-            pygame.time.wait(2000)  # Пауза, чтобы сообщение успело отобразиться
+            pygame.time.wait(2000)
+            running = False  # Заканчиваем игру
+
+        # Проверка на поражение
+        elif check_defeat(nodes):
+            screen.fill(GREEN)
+            show_defeat_message()
+            pygame.display.update()
+            pygame.time.wait(2000)
             running = False  # Заканчиваем игру
 
         else:
@@ -291,14 +272,12 @@ def game_loop(difficulty_level):
                 node.update_troops()
                 node.draw(screen)
 
-            # Рисуем линии между территориями
-
         pygame.display.update()
         clock.tick(FPS)
 
 
 # Начало игры
-difficulty_level = show_difficulty_selection()
+difficulty_level = 1  # Можно настроить на разные уровни сложности
 game_loop(difficulty_level)
 
 pygame.quit()
