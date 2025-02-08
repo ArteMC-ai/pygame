@@ -318,14 +318,15 @@ def game_loop(level_index):
                                     moving_troops.append(TroopMovement(selected_node, node))
                                     selected_node.troops = selected_node.troops // 2
                                 selected_node = None
+                            else:
+                                selected_node = node
 
         ai_turn(nodes, moving_troops)
 
         for troop in moving_troops[:]:
             if troop.update():
                 moving_troops.remove(troop)
-                target_node = next((node for node in nodes if (node.x, node.y) == (troop.target.x, troop.target.y)),
-                                   None)
+                target_node = next((node for node in nodes if (node.x, node.y) == (troop.target.x, troop.target.y)), None)
                 if target_node:
                     if target_node.owner == 1 and troop.color == BLUE:
                         target_node.troops += troop.troops
@@ -365,6 +366,7 @@ def game_loop(level_index):
 
         pygame.display.update()
         clock.tick(FPS)
+
 
 
 # Начало игры
