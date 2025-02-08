@@ -17,6 +17,7 @@ BLACK = (0, 0, 0)
 RED = (255, 0, 0)
 BLUE = (0, 0, 255)
 GREEN = (0, 255, 0)
+YELLOW = (255, 255, 0)
 
 # Кадровая частота
 clock = pygame.time.Clock()
@@ -26,13 +27,17 @@ FPS = 60
 UNIT_GROWTH_INTERVAL = 1  # юниты в секунду
 MOVEMENT_SPEED = 5  # Скорость перемещения войск
 
+# Скорость атаки ИИ
+ai_last_attack_time = time.time()
+ai_attack_cooldown = 3
+
 
 # Классы
 class Node:
     def __init__(self, x, y, owner, troops, player_growth_interval, enemy_growth_interval):
         self.x = x
         self.y = y
-        self.owner = owner  # 0 - нейтральный, 1 - игрок, 2 - враг
+        self.owner = owner  # 0 - нейтральный, 1 - игрок, 2 - враг (красный), 3 - враг (зелёный), 4 - враг (желтый)
         self.troops = troops
         self.radius = 30
         self.last_growth_time = time.time()
@@ -52,16 +57,23 @@ class Node:
         self.sprite_enemy = pygame.transform.scale(
             pygame.image.load("sprites/red_castle.png").convert_alpha(), (50, 50)
         )
+        self.sprite_enemy_green = pygame.transform.scale(
+            pygame.image.load("sprites/green-castle.png").convert_alpha(), (50, 50)
+        )
+        self.sprite_enemy_yellow = pygame.transform.scale(
+            pygame.image.load("sprites/yelow-castle.png").convert_alpha(), (50, 50)
+        )
 
     def update_troops(self):
+        current_time = time.time()
         if self.owner == 1:
-            if time.time() - self.last_growth_time > self.player_growth_interval:
+            if current_time - self.last_growth_time > self.player_growth_interval:
                 self.troops += 2
-                self.last_growth_time = time.time()
-        elif self.owner == 2:
-            if time.time() - self.last_growth_time > self.enemy_growth_interval:
+                self.last_growth_time = current_time
+        elif self.owner in [2, 3, 4]:
+            if current_time - self.last_growth_time > self.enemy_growth_interval:
                 self.troops += 2
-                self.last_growth_time = time.time()
+                self.last_growth_time = current_time
 
     def draw(self, screen):
         # Выбор спрайта в зависимости от владельца
@@ -69,8 +81,12 @@ class Node:
             sprite = self.sprite_neutral
         elif self.owner == 1:
             sprite = self.sprite_player
-        else:
+        elif self.owner == 2:
             sprite = self.sprite_enemy
+        elif self.owner == 3:
+            sprite = self.sprite_enemy_green
+        elif self.owner == 4:
+            sprite = self.sprite_enemy_yellow
 
         # Отрисовка спрайта
         sprite_rect = sprite.get_rect(center=(self.x, self.y))
@@ -116,7 +132,7 @@ class Node:
 class TroopMovement:
     def __init__(self, start_node, target_node):
         self.troops = start_node.troops // 2
-        self.color = BLUE if start_node.owner == 1 else RED
+        self.color = BLUE if start_node.owner == 1 else RED if start_node.owner == 2 else GREEN if start_node.owner == 3 else YELLOW
         self.pos = Vector2(start_node.x, start_node.y)
         self.target = Vector2(target_node.x, target_node.y)
         self.speed = MOVEMENT_SPEED
@@ -154,6 +170,10 @@ levels = [
             {"x": 400, "y": 300, "owner": 2, "troops": 15},
             {"x": 300, "y": 500, "owner": 0, "troops": 30},
             {"x": 500, "y": 500, "owner": 0, "troops": 40},
+            {"x": 200, "y": 300, "owner": 2, "troops": 20},
+            {"x": 600, "y": 500, "owner": 2, "troops": 25},
+            {"x": 400, "y": 150, "owner": 3, "troops": 30},
+            {"x": 250, "y": 200, "owner": 3, "troops": 30},
         ]
     },
     {
@@ -164,9 +184,16 @@ levels = [
             {"x": 100, "y": 100, "owner": 1, "troops": 70},
             {"x": 700, "y": 100, "owner": 2, "troops": 30},
             {"x": 400, "y": 300, "owner": 2, "troops": 20},
+            {"x": 500, "y": 300, "owner": 2, "troops": 20},
             {"x": 250, "y": 450, "owner": 0, "troops": 40},
             {"x": 550, "y": 450, "owner": 0, "troops": 50},
             {"x": 400, "y": 550, "owner": 0, "troops": 45},
+            {"x": 400, "y": 150, "owner": 3, "troops": 30},
+            {"x": 250, "y": 200, "owner": 3, "troops": 30},
+            {"x": 250, "y": 250, "owner": 3, "troops": 30},
+            {"x": 600, "y": 500, "owner": 4, "troops": 50},
+            {"x": 700, "y": 350, "owner": 4, "troops": 50},
+            {"x": 200, "y": 300, "owner": 4, "troops": 50},
         ]
     }
 ]
@@ -193,18 +220,28 @@ def create_nodes(level):
 
 
 def ai_turn(nodes, moving_troops):
+    global ai_last_attack_time
+
+    current_time = time.time()
+    if current_time - ai_last_attack_time < ai_attack_cooldown:
+        return  # Skip AI turn if cooldown period hasn't passed
+
     for node in nodes:
-        if node.owner == 2:
-            for neighbor in node.neighbors:
-                if neighbor.owner != 2 and neighbor.troops < node.troops:
-                    if node.troops > neighbor.troops:
-                        troops_to_send = node.troops // 2
-                        node.troops -= troops_to_send
-                        moving_troops.append(TroopMovement(node, neighbor))
+        if node.owner in [2, 3, 4] and node.troops > 1:
+            target_node = min(
+                (neighbor for neighbor in node.neighbors if neighbor.owner != node.owner),
+                key=lambda n: n.troops,
+                default=None
+            )
+            if target_node:
+                troops_to_send = node.troops // 2
+                node.troops -= troops_to_send
+                moving_troops.append(TroopMovement(node, target_node))
+                ai_last_attack_time = current_time
 
 
 def check_victory(nodes):
-    return not any(node.owner == 2 for node in nodes)  # Победа, если у врага нет узлов
+    return not any(node.owner in [2, 3, 4] for node in nodes)  # Победа, если у врага нет узлов
 
 
 def check_defeat(nodes):
@@ -284,20 +321,24 @@ def game_loop(level_index):
 
         ai_turn(nodes, moving_troops)
 
-        # Обновляем движущиеся войска
         for troop in moving_troops[:]:
             if troop.update():
                 moving_troops.remove(troop)
-                target_node = next((node for node in nodes if (node.x, node.y) == (troop.target.x, troop.target.y)), None)
+                target_node = next((node for node in nodes if (node.x, node.y) == (troop.target.x, troop.target.y)),
+                                   None)
                 if target_node:
                     if target_node.owner == 1 and troop.color == BLUE:
                         target_node.troops += troop.troops
                     elif target_node.owner == 2 and troop.color == RED:
                         target_node.troops += troop.troops
+                    elif target_node.owner == 3 and troop.color == GREEN:
+                        target_node.troops += troop.troops
+                    elif target_node.owner == 4 and troop.color == YELLOW:
+                        target_node.troops += troop.troops
                     else:
                         target_node.troops -= troop.troops
                         if target_node.troops <= 0:
-                            target_node.owner = 1 if troop.color == BLUE else 2
+                            target_node.owner = 1 if troop.color == BLUE else 2 if troop.color == RED else 3 if troop.color == GREEN else 4
                             target_node.troops = abs(target_node.troops)
 
         screen.fill(GREEN)

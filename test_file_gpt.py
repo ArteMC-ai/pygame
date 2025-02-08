@@ -19,6 +19,7 @@ BLUE = (0, 0, 255)
 clock = pygame.time.Clock()
 FPS = 60
 
+
 # Классы
 class Node:
     def __init__(self, x, y, owner, troops):
