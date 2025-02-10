@@ -49,19 +49,19 @@ class Node:
         self.enemy_growth_interval = enemy_growth_interval
 
         self.sprite_neutral = pygame.transform.scale(
-            pygame.image.load("sprites/neutral_castle.png").convert_alpha(), (50, 50)
+            pygame.image.load("sprites/neutral_castle.png").convert_alpha(), (55, 55)
         )
         self.sprite_player = pygame.transform.scale(
-            pygame.image.load("sprites/blue_castle.png").convert_alpha(), (50, 50)
+            pygame.image.load("sprites/blue_castle.png").convert_alpha(), (60, 60)
         )
         self.sprite_enemy = pygame.transform.scale(
-            pygame.image.load("sprites/red_castle.png").convert_alpha(), (50, 50)
+            pygame.image.load("sprites/red_castle.png").convert_alpha(), (60, 60)
         )
         self.sprite_enemy_green = pygame.transform.scale(
-            pygame.image.load("sprites/green-castle.png").convert_alpha(), (50, 50)
+            pygame.image.load("sprites/green-castle.png").convert_alpha(), (50, 60)
         )
         self.sprite_enemy_yellow = pygame.transform.scale(
-            pygame.image.load("sprites/yelow-castle.png").convert_alpha(), (50, 50)
+            pygame.image.load("sprites/yellow_castle.png").convert_alpha(), (60, 60)
         )
 
     def update_troops(self):
