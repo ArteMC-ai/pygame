@@ -1,8 +1,10 @@
 import math
-import random
 import time
+
 import pygame
 from pygame.math import Vector2
+
+from levels import levels
 
 pygame.init()
 
@@ -40,6 +42,7 @@ class Node:
         self.owner = owner  # 0 - нейтральный, 1 - игрок, 2 - враг (красный), 3 - враг (зелёный), 4 - враг (желтый)
         self.troops = troops
         self.radius = 30
+        self.click_radius = self.radius + 10  # добавим отступ к радиусу для улучшенной зоны клика
         self.last_growth_time = time.time()
         self.moving = False
         self.target = None
@@ -79,16 +82,24 @@ class Node:
         # Выбор спрайта в зависимости от владельца
         if self.owner == 0:
             sprite = self.sprite_neutral
+            circle_color = WHITE  # Белый цвет для нейтральных баз
         elif self.owner == 1:
             sprite = self.sprite_player
+            circle_color = BLUE  # Синий для игрока
         elif self.owner == 2:
             sprite = self.sprite_enemy
+            circle_color = RED  # Красный для врага
         elif self.owner == 3:
             sprite = self.sprite_enemy_green
+            circle_color = GREEN  # Зеленый для врага
         elif self.owner == 4:
             sprite = self.sprite_enemy_yellow
+            circle_color = YELLOW  # Желтый для врага
 
-        # Отрисовка спрайта
+        # Отрисовка круга вокруг базы
+        pygame.draw.circle(screen, circle_color, (self.x, self.y), self.radius + 10, 3)  # Круг с отступом
+
+        # Отрисовка спрайта базы
         sprite_rect = sprite.get_rect(center=(self.x, self.y))
         screen.blit(sprite, sprite_rect)
 
@@ -100,7 +111,7 @@ class Node:
     def is_clicked(self, pos):
         dx = pos[0] - self.x
         dy = pos[1] - self.y
-        return dx ** 2 + dy ** 2 <= self.radius ** 2
+        return dx ** 2 + dy ** 2 <= self.click_radius ** 2  # Используем новый радиус с отступом
 
     def start_movement(self, target_node):
         if not self.moving:
@@ -146,57 +157,6 @@ class TroopMovement:
 
     def draw(self, screen):
         pygame.draw.circle(screen, self.color, (int(self.pos.x), int(self.pos.y)), 8)
-
-
-# уровни
-levels = [
-    {
-        "name": "Level 1",
-        "player_growth_interval": 1,
-        "enemy_growth_interval": 1.5,
-        "nodes": [
-            {"x": 200, "y": 200, "owner": 1, "troops": 20},
-            {"x": 600, "y": 200, "owner": 2, "troops": 10},
-            {"x": 400, "y": 400, "owner": 0, "troops": 20},
-        ]
-    },
-    {
-        "name": "Level 2",
-        "player_growth_interval": 1.5,
-        "enemy_growth_interval": 2,
-        "nodes": [
-            {"x": 150, "y": 150, "owner": 1, "troops": 50},
-            {"x": 650, "y": 150, "owner": 2, "troops": 25},
-            {"x": 400, "y": 300, "owner": 2, "troops": 15},
-            {"x": 300, "y": 500, "owner": 0, "troops": 30},
-            {"x": 500, "y": 500, "owner": 0, "troops": 40},
-            {"x": 200, "y": 300, "owner": 2, "troops": 20},
-            {"x": 600, "y": 500, "owner": 2, "troops": 25},
-            {"x": 400, "y": 150, "owner": 3, "troops": 30},
-            {"x": 250, "y": 200, "owner": 3, "troops": 30},
-        ]
-    },
-    {
-        "name": "Level 3",
-        "player_growth_interval": 2,
-        "enemy_growth_interval": 1.5,
-        "nodes": [
-            {"x": 100, "y": 100, "owner": 1, "troops": 70},
-            {"x": 700, "y": 100, "owner": 2, "troops": 30},
-            {"x": 400, "y": 300, "owner": 2, "troops": 20},
-            {"x": 500, "y": 300, "owner": 2, "troops": 20},
-            {"x": 250, "y": 450, "owner": 0, "troops": 40},
-            {"x": 550, "y": 450, "owner": 0, "troops": 50},
-            {"x": 400, "y": 550, "owner": 0, "troops": 45},
-            {"x": 400, "y": 150, "owner": 3, "troops": 30},
-            {"x": 250, "y": 200, "owner": 3, "troops": 30},
-            {"x": 250, "y": 250, "owner": 3, "troops": 30},
-            {"x": 600, "y": 500, "owner": 4, "troops": 50},
-            {"x": 700, "y": 350, "owner": 4, "troops": 50},
-            {"x": 200, "y": 300, "owner": 4, "troops": 50},
-        ]
-    }
-]
 
 
 def create_nodes(level):
@@ -299,10 +259,11 @@ def game_loop(level_index):
     level = levels[level_index]
     nodes = create_nodes(level)
     moving_troops = []
-
+    background = level["background"]
     selected_node = None
     running = True
     while running:
+        screen.fill(background)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -326,7 +287,8 @@ def game_loop(level_index):
         for troop in moving_troops[:]:
             if troop.update():
                 moving_troops.remove(troop)
-                target_node = next((node for node in nodes if (node.x, node.y) == (troop.target.x, troop.target.y)), None)
+                target_node = next((node for node in nodes if (node.x, node.y) == (troop.target.x, troop.target.y)),
+                                   None)
                 if target_node:
                     if target_node.owner == 1 and troop.color == BLUE:
                         target_node.troops += troop.troops
@@ -342,7 +304,6 @@ def game_loop(level_index):
                             target_node.owner = 1 if troop.color == BLUE else 2 if troop.color == RED else 3 if troop.color == GREEN else 4
                             target_node.troops = abs(target_node.troops)
 
-        screen.fill(GREEN)
         for node in nodes:
             node.update_troops()
             node.draw(screen)
@@ -366,7 +327,6 @@ def game_loop(level_index):
 
         pygame.display.update()
         clock.tick(FPS)
-
 
 
 # Начало игры
