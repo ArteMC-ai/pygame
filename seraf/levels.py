@@ -2,6 +2,7 @@ levels = [
     {
         "name": "Level 1",
         "background": (22, 233, 149),
+        "music":"sounds/lvl1.mp3",
         "player_growth_interval": 1,
         "enemy_growth_interval": 1.5,
         "nodes": [
@@ -13,6 +14,7 @@ levels = [
     {
         "name": "Level 2",
         "background": (0, 128, 255),
+        "music":"sounds/lvl2.mp3",
         "player_growth_interval": 1.5,
         "enemy_growth_interval": 2,
         "nodes": [
@@ -30,6 +32,7 @@ levels = [
     {
         "name": "Level 3",
         "background": (176, 179, 76),
+        "music":"sounds/lvl3.mp3",
         "player_growth_interval": 2,
         "enemy_growth_interval": 1.5,
         "nodes": [
