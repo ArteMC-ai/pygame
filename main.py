@@ -292,17 +292,17 @@ def level_selection_screen():
     level_buttons = []
     for i, level in enumerate(levels):
         button_text = pygame.font.SysFont(None, 36).render(level["name"], True, BLACK)
-        button_rect = pygame.Rect(WIDTH // 2 - 100, 150 + i * 80, 200, 50)  # Сдвинул на 50 пикселей вверх
+        button_rect = pygame.Rect(WIDTH // 2 - 100, 150 + i * 80, 200, 50)
         level_buttons.append((button_text, button_rect))
 
     # Дополнительная кнопка магазина
     shop_button_rect = pygame.Rect(WIDTH // 2 - 100, 150 + len(levels) * 80 + 20, 200,
-                                   50)  # Сдвинул на 50 пикселей вверх
+                                   50)
     shop_button_text = pygame.font.SysFont(None, 36).render("Магазин", True, BLACK)
 
     # Кнопка выхода
     exit_button_rect = pygame.Rect(WIDTH // 2 - 100, 150 + (len(levels) + 1) * 80 + 20, 200,
-                                   50)  # Сдвинул на 50 пикселей вверх
+                                   50)
     exit_button_text = pygame.font.SysFont(None, 36).render("Выход", True, BLACK)
 
     running = True
@@ -365,7 +365,6 @@ def game_loop(level_index):
     nodes = create_nodes(level)
     moving_troops = []
     background = level["background"]
-    # Запускаем музыку уровня: если в уровне задан ключ "music", используем его, иначе стандартный трек.
     if "music" in level:
         play_music(level["music"])
     else:
@@ -387,7 +386,6 @@ def game_loop(level_index):
             screen.blit(background_image, (0, 0))
 
         # Отрисовка кнопок в углах:
-        # Теперь кнопка меню в левом верхнем углу
         menu_button_game = pygame.Rect(10, 10, 100, 40)
         pygame.draw.rect(screen, GRAY, menu_button_game)
         draw_text("Меню", pygame.font.SysFont(None, 24), BLACK, 15, 20)
