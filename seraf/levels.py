@@ -1,3 +1,5 @@
+import json
+
 levels = [
     {
         "name": "Level 1",
@@ -44,11 +46,15 @@ levels = [
             {"x": 550, "y": 450, "owner": 0, "troops": 50},
             {"x": 400, "y": 550, "owner": 0, "troops": 45},
             {"x": 400, "y": 150, "owner": 3, "troops": 30},
-            {"x": 250, "y": 200, "owner": 3, "troops": 30},
-            {"x": 250, "y": 250, "owner": 3, "troops": 30},
-            {"x": 600, "y": 500, "owner": 4, "troops": 50},
+            {"x": 300, "y": 350, "owner": 3, "troops": 30},
+            {"x": 250, "y": 100, "owner": 3, "troops": 30},
+            {"x": 600, "y": 250, "owner": 4, "troops": 50},
             {"x": 700, "y": 350, "owner": 4, "troops": 50},
             {"x": 200, "y": 300, "owner": 4, "troops": 50},
         ]
     }
 ]
+
+
+with open('levels.json', 'w') as f:
+    json.dump(levels, f, indent=4)
