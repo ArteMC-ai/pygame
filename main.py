@@ -1,6 +1,5 @@
 import math
 import time
-import json
 import pygame
 from pygame.math import Vector2
 
@@ -170,7 +169,7 @@ def shop_screen():
                         def cancel_upgrade():
                             pass
 
-                        show_confirmation_dialog("Вы уверены, что хотите улучшить скорость роста?", confirm_upgrade,
+                        show_confirmation_dialog("Вы уверены, что хотите улучшить скорость роста войск?", confirm_upgrade,
                                                  cancel_upgrade)
                 elif button_exit.collidepoint(pos):
                     running = False
@@ -441,9 +440,7 @@ def game_loop(level_index):
     else:
         play_music("sounds/level_music.mp3")
 
-    # Убираем загрузку фонового изображения, потому что теперь это просто цвет
     background_color = background
-    background_image = None  # Не нужно использовать изображение фона
 
     selected_node = None
     running = True
