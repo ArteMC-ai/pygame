@@ -1,10 +1,18 @@
 import math
 import time
-
+import json
 import pygame
 from pygame.math import Vector2
 
-from levels import levels
+import json
+
+def load_levels():
+    with open("levels.json", "r", encoding="utf-8") as file:
+        data = json.load(file)
+    return data["levels"]
+
+# Загрузим уровни
+levels = load_levels()
 
 pygame.init()
 pygame.mixer.init()
@@ -44,7 +52,7 @@ MOVEMENT_SPEED = 5  # скорость перемещения войск
 ai_last_attack_time = time.time()
 ai_attack_cooldown = 3
 
-# Глобальные переменные для магазина и прокачек
+# Глобальные переменные для магазина и прокачки количества войск
 monet = 0  # монеты (начинается с 0, начисляются за уровень)
 count_upgrade_level = 0  # уровень прокачки количества войск
 growth_upgrade_level = 0  # уровень прокачки скорости роста войск
@@ -55,6 +63,42 @@ troop_count_increase = 0  # бонус к начальному количест�
 def draw_text(text, font, color, x, y):
     label = font.render(text, True, color)
     screen.blit(label, (x, y))
+
+
+# Функция для отображения диалога подтверждения
+def show_confirmation_dialog(message, confirm_callback, cancel_callback):
+    font = pygame.font.SysFont(None, 24)
+    text = font.render(message, True, BLACK)
+    text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 50))
+
+    confirm_button = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 20, 200, 50)
+    cancel_button = pygame.Rect(WIDTH // 2 - 100, HEIGHT // 2 + 80, 200, 50)
+
+    running = True
+    while running:
+        screen.fill(WHITE)
+        screen.blit(text, text_rect)
+
+        pygame.draw.rect(screen, GRAY, confirm_button)
+        pygame.draw.rect(screen, GRAY, cancel_button)
+
+        draw_text("Подтвердить", font, BLACK, confirm_button.centerx, confirm_button.centery)
+        draw_text("Отмена", font, BLACK, cancel_button.centerx, cancel_button.centery)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                pos = pygame.mouse.get_pos()
+                if confirm_button.collidepoint(pos):
+                    confirm_callback()
+                    running = False
+                elif cancel_button.collidepoint(pos):
+                    cancel_callback()
+                    running = False
+
+        pygame.display.update()
+        clock.tick(FPS)
 
 
 # Магазин с кнопками (вызывается как по клавише M, так и из главного меню)
@@ -93,24 +137,40 @@ def shop_screen():
                 pygame.quit()
                 exit()
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                if button_upgrade_count.collidepoint(event.pos):
+                pos = pygame.mouse.get_pos()
+                if button_upgrade_count.collidepoint(pos):
                     if monet >= cost1:
-                        monet -= cost1
-                        count_upgrade_level += 1
-                        # При первом уровне бонус +5, затем +6, +7 и т.д.
-                        troop_count_increase += (5 + count_upgrade_level - 1)
-                elif button_upgrade_growth.collidepoint(event.pos):
+                        def confirm_upgrade():
+                            global monet, count_upgrade_level, troop_count_increase
+                            monet -= cost1
+                            count_upgrade_level += 1
+                            troop_count_increase += (5 + count_upgrade_level - 1)
+
+                        def cancel_upgrade():
+                            pass
+
+                        show_confirmation_dialog("Вы уверены, что хотите улучшить войска?", confirm_upgrade,
+                                                 cancel_upgrade)
+                elif button_upgrade_growth.collidepoint(pos):
                     if monet >= cost2:
-                        monet -= cost2
-                        growth_upgrade_level += 1
-                elif button_exit.collidepoint(event.pos):
+                        def confirm_upgrade():
+                            global monet, growth_upgrade_level
+                            monet -= cost2
+                            growth_upgrade_level += 1
+
+                        def cancel_upgrade():
+                            pass
+
+                        show_confirmation_dialog("Вы уверены, что хотите улучшить скорость роста?", confirm_upgrade,
+                                                 cancel_upgrade)
+                elif button_exit.collidepoint(pos):
                     running = False
 
         pygame.display.update()
         clock.tick(FPS)
 
 
-# Класс узлов (баз)
+# Класс узлов (база)
 class Node:
     def __init__(self, x, y, owner, troops, player_growth_interval, enemy_growth_interval):
         self.x = x
@@ -118,7 +178,7 @@ class Node:
         self.owner = owner  # 0 - нейтральный, 1 - игрок, 2 - враг (красный), 3 - враг (зелёный), 4 - враг (желтый)
         self.troops = troops
         self.radius = 30
-        self.click_radius = self.radius + 10  # улучшенная зона клика
+        self.click_radius = self.radius + 10  # увеличенная зона клика
         self.last_growth_time = time.time()
         self.moving = False
         self.target = None
@@ -292,17 +352,17 @@ def level_selection_screen():
     level_buttons = []
     for i, level in enumerate(levels):
         button_text = pygame.font.SysFont(None, 36).render(level["name"], True, BLACK)
-        button_rect = pygame.Rect(WIDTH // 2 - 100, 150 + i * 80, 200, 50)
+        button_rect = pygame.Rect(WIDTH // 2 - 100, 150 + i * 80, 200, 50)  # Сдвинул на 50 пикселей вверх
         level_buttons.append((button_text, button_rect))
 
     # Дополнительная кнопка магазина
     shop_button_rect = pygame.Rect(WIDTH // 2 - 100, 150 + len(levels) * 80 + 20, 200,
-                                   50)
+                                   50)  # Сдвинул на 50 пикселей вверх
     shop_button_text = pygame.font.SysFont(None, 36).render("Магазин", True, BLACK)
 
     # Кнопка выхода
     exit_button_rect = pygame.Rect(WIDTH // 2 - 100, 150 + (len(levels) + 1) * 80 + 20, 200,
-                                   50)
+                                   50)  # Сдвинул на 50 пикселей вверх
     exit_button_text = pygame.font.SysFont(None, 36).render("Выход", True, BLACK)
 
     running = True
@@ -364,32 +424,31 @@ def game_loop(level_index):
     level = levels[level_index]
     nodes = create_nodes(level)
     moving_troops = []
-    background = level["background"]
+    background = level["background"]  # Получаем цвет фона из данных уровня
+
+    # Запускаем музыку уровня: если в уровне задан ключ "music", используем его, иначе стандартный трек.
     if "music" in level:
         play_music(level["music"])
     else:
         play_music("sounds/level_music.mp3")
 
-    if isinstance(background, tuple):
-        background_color = background
-        background_image = None
-    else:
-        background_image = pygame.image.load(background).convert()
-        background_image = pygame.transform.scale(background_image, (WIDTH, HEIGHT))
-        background_color = None
+    # Убираем загрузку фонового изображения, потому что теперь это просто цвет
+    background_color = background
+    background_image = None  # Не нужно использовать изображение фона
+
     selected_node = None
     running = True
     while running:
-        if background_color:
-            screen.fill(background_color)
-        else:
-            screen.blit(background_image, (0, 0))
+        # Отрисовываем цветной фон
+        screen.fill(background_color)
 
         # Отрисовка кнопок в углах:
+        # Кнопка меню в левом верхнем углу
         menu_button_game = pygame.Rect(10, 10, 100, 40)
         pygame.draw.rect(screen, GRAY, menu_button_game)
         draw_text("Меню", pygame.font.SysFont(None, 24), BLACK, 15, 20)
-        # А кнопка магазина в правом верхнем углу
+
+        # Кнопка магазина в правом верхнем углу
         shop_button_game = pygame.Rect(WIDTH - 110, 10, 100, 40)
         pygame.draw.rect(screen, GRAY, shop_button_game)
         draw_text("Магазин", pygame.font.SysFont(None, 24), BLACK, WIDTH - 100, 20)
@@ -426,7 +485,10 @@ def game_loop(level_index):
                 elif event.key == pygame.K_b:
                     level_selection_screen()  # Возврат в меню по клавише B
                     return
+
         ai_turn(nodes, moving_troops)
+
+        # Обработка перемещения и отрисовки войск
         for troop in moving_troops[:]:
             if troop.update():
                 moving_troops.remove(troop)
@@ -446,11 +508,14 @@ def game_loop(level_index):
                         if target_node.troops <= 0:
                             target_node.owner = 1 if troop.color == BLUE else 2 if troop.color == RED else 3 if troop.color == GREEN else 4
                             target_node.troops = abs(target_node.troops)
+
         for node in nodes:
             node.update_troops()
             node.draw(screen)
+
         for troop in moving_troops:
             troop.draw(screen)
+
         if check_victory(nodes):
             finish_level(level_index)
             show_victory_message()
@@ -464,11 +529,11 @@ def game_loop(level_index):
             pygame.display.update()
             pygame.time.wait(2000)
             running = False
+
         info_font = pygame.font.SysFont(None, 24)
         draw_text("Нажмите M для магазина, B для меню", info_font, BLUE, 10, HEIGHT - 30)
         pygame.display.update()
         clock.tick(FPS)
-
 
 # Запуск игры (начало с экрана выбора уровня)
 level_selection_screen()
